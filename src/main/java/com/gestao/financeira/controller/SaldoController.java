@@ -29,6 +29,13 @@ public class SaldoController {
         return service.salvar(saldo);
     }
 
+    @PutMapping("/{id}")
+    public Saldo atualizar(@PathVariable Long id, @RequestBody Saldo saldo) {
+        saldo.setId(id);
+        return service.salvar(saldo);
+    }
+
+
     @DeleteMapping("/{id}")
     public void deletar(@PathVariable Long id) {
         service.deletar(id);
