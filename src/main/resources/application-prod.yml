@@ -8,10 +8,8 @@ spring:
       ddl-auto: update
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
-exchange:
-  api:
-    url: "https://v6.exchangerate-api.com/v6/"
-    key: ${EXCHANGE_API_KEY}
+api:
+  url: "https://economia.awesomeapi.com.br/last/USD-BRL"
 
 app:
   frontend:

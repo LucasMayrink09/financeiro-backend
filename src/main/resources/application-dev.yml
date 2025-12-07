@@ -8,10 +8,8 @@ spring:
       ddl-auto: update
     database-platform: org.hibernate.community.dialect.SQLiteDialect
 
-exchange:
-  api:
-    url: "https://v6.exchangerate-api.com/v6/"
-    key: "9cbf2d799fc41c696e69f561"
+api:
+  url: "https://economia.awesomeapi.com.br/last/USD-BRL"
 
 app:
   frontend:

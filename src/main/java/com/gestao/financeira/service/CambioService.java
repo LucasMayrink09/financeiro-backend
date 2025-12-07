@@ -1,6 +1,6 @@
 package com.gestao.financeira.service;
 
-import org.springframework.beans.factory.annotation.Value; // <-- IMPORTE ESTE
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -13,15 +13,10 @@ import java.util.Map;
 @Service
 public class CambioService {
 
-    private final String apiKey;
-    private final String apiBaseUrl;
+    private final String apiUrl;
 
-    public CambioService(
-            @Value("${exchange.api.key}") String apiKey,
-            @Value("${exchange.api.url}") String apiBaseUrl
-    ) {
-        this.apiKey = apiKey;
-        this.apiBaseUrl = apiBaseUrl;
+    public CambioService(@Value("${api.url}") String apiUrl) {
+        this.apiUrl = apiUrl;
     }
 
     private Map<String, Object> cacheCotacao = new HashMap<>();
@@ -32,12 +27,11 @@ public class CambioService {
         if (cacheCotacao.containsKey("cotacao") && isCacheValid()) {
             return cacheCotacao;
         }
-
         return fetchNovaCotacao();
     }
 
     private boolean isCacheValid() {
-        long CACHE_DURATION_MINUTES = 60;
+        long CACHE_DURATION_MINUTES = 15;
 
         if (!cacheCotacao.containsKey("ultima_atualizacao")) {
             return false;
@@ -50,38 +44,39 @@ public class CambioService {
     }
 
     private Map<String, Object> fetchNovaCotacao() {
-        String url = apiBaseUrl + apiKey + "/latest/USD";
-
         try {
-            Map<String, Object> apiResponse = restClient.get()
-                    .uri(url)
+            Map<String, Map<String, String>> apiResponse = restClient.get()
+                    .uri(apiUrl)
                     .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                    .body(new ParameterizedTypeReference<Map<String, Map<String, String>>>() {});
 
-            Map<String, Object> conversionRates = (Map<String, Object>) apiResponse.get("conversion_rates");
-            Double cotacaoBRL = (Double) conversionRates.get("BRL");
+            if (apiResponse != null && apiResponse.containsKey("USDBRL")) {
+                Map<String, String> dadosMoeda = apiResponse.get("USDBRL");
 
-            Map<String, Object> resultado = new HashMap<>();
-            resultado.put("cotacao", cotacaoBRL);
-            resultado.put("ultima_atualizacao", Instant.now().toString());
+                Double cotacaoBRL = Double.parseDouble(dadosMoeda.get("bid"));
 
-            cacheCotacao = resultado;
-            return resultado;
+                Map<String, Object> resultado = new HashMap<>();
+                resultado.put("cotacao", cotacaoBRL);
+                resultado.put("ultima_atualizacao", Instant.now().toString());
 
-        } catch (Exception e) {
-            System.err.println("Erro ao chamar ExchangeRate-API: " + e.getMessage());
-
-            if (cacheCotacao.containsKey("cotacao")) {
-                return cacheCotacao;
+                cacheCotacao = resultado;
+                System.out.println("Cotação atualizada via AwesomeAPI: " + cotacaoBRL);
+                return resultado;
             }
 
-            return Map.of("cotacao", 5.50, "ultima_atualizacao", Instant.now().toString());
+        } catch (Exception e) {
+            System.err.println("Erro ao chamar AwesomeAPI: " + e.getMessage());
         }
+
+        if (cacheCotacao.containsKey("cotacao")) {
+            return cacheCotacao;
+        }
+        return Map.of("cotacao", 5.50, "ultima_atualizacao", Instant.now().toString());
     }
 
-    @Scheduled(fixedRate = 60 * 60 * 1000)
+    @Scheduled(fixedRate = 15 * 60 * 1000)
     public void atualizarCotacaoAutomatica() {
-        System.out.println("Atualizando cotação automaticamente às " + Instant.now());
+        System.out.println("Executando atualização agendada (15 min)...");
         fetchNovaCotacao();
     }
 }
