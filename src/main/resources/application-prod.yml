@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+exchange:
+  api:
+    url: "https://v6.exchangerate-api.com/v6/"
+    key: ${EXCHANGE_API_KEY}
+
+app:
+  frontend:
+    url: ${FRONTEND_URL}
