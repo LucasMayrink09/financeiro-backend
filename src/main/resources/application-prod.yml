@@ -9,7 +9,8 @@ spring:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
 
 api:
-  url: "https://economia.awesomeapi.com.br/last/USD-BRL"
+  url: "https://api.hgbrasil.com/finance?format=json-cors&"
+  key: ${API_KEY}
 
 app:
   frontend:
