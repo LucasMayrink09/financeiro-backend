@@ -93,18 +93,23 @@ public class CriptoService {
         if (response == null || !response.containsKey("data")) {
             throw new RuntimeException("Resposta inválida da CMC");
         }
-
         Map<String, Object> dataMap = (Map<String, Object>) response.get("data");
         List<Map<String, Object>> processada = new ArrayList<>();
+        String[] simbolosOrdenados = MOEDAS_ALVO_CMC.split(",");
 
-        for (String key : dataMap.keySet()) {
-            Map<String, Object> coinData = (Map<String, Object>) dataMap.get(key);
-            String symbol = (String) coinData.get("symbol");
-            String name = (String) coinData.get("name");
-            Map<String, Object> quote = (Map<String, Object>) coinData.get("quote");
-            Map<String, Object> usdInfo = (Map<String, Object>) quote.get("USD");
-            Double priceUsd = ((Number) usdInfo.get("price")).doubleValue();
-            processada.add(montarObjetoMoeda(symbol, name, priceUsd, cotacaoDolar));
+        for (String targetSymbol : simbolosOrdenados) {
+            if (dataMap.containsKey(targetSymbol)) {
+                Map<String, Object> coinData = (Map<String, Object>) dataMap.get(targetSymbol);
+
+                String symbol = (String) coinData.get("symbol");
+                String name = (String) coinData.get("name");
+
+                Map<String, Object> quote = (Map<String, Object>) coinData.get("quote");
+                Map<String, Object> usdInfo = (Map<String, Object>) quote.get("USD");
+                Double priceUsd = ((Number) usdInfo.get("price")).doubleValue();
+
+                processada.add(montarObjetoMoeda(symbol, name, priceUsd, cotacaoDolar));
+            }
         }
 
         atualizarCache(processada);
