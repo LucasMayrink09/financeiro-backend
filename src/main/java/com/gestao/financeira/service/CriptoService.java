@@ -19,28 +19,28 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class CriptoService {
 
-    private final String apiCoinCapUrl;
-    private final String apiBinanceUrl;
+    private final String apiCmcUrl;
+    private final String apiCmcKey;
+    private final String apiCoinGeckoUrl;
     private final CambioService cambioService;
     private final RestClient restClient = RestClient.create();
 
     private Map<String, Object> cacheCripto = new ConcurrentHashMap<>();
 
-    private Instant momentoUltimoErroBinance = null;
+    private Instant momentoUltimoErroPrincipal = null;
     private static final long TEMPO_ESPERA_MINUTOS = 60;
 
-    private static final List<String> MOEDAS_ALVO_BINANCE = List.of(
-            "BTCUSDT", "ETHUSDT", "XRPUSDT", "BNBUSDT",
-            "SOLUSDT", "USDCUSDT", "TRXUSDT", "DOGEUSDT", "ADAUSDT"
-    );
+    private static final String MOEDAS_ALVO_CMC = "BTC,ETH,XRP,BNB,SOL,USDC,TRX,DOGE,ADA,USDT";
 
     public CriptoService(
-            @Value("${api.coincap-url}") String apiCoinCapUrl,
-            @Value("${api.binance-url}") String apiBinanceUrl,
+            @Value("${api.cmc-url}") String apiCmcUrl,
+            @Value("${api.cmc-key}") String apiCmcKey,
+            @Value("${api.coingecko-url}") String apiCoinGeckoUrl,
             CambioService cambioService
     ) {
-        this.apiCoinCapUrl = apiCoinCapUrl;
-        this.apiBinanceUrl = apiBinanceUrl;
+        this.apiCmcUrl = apiCmcUrl;
+        this.apiCmcKey = apiCmcKey;
+        this.apiCoinGeckoUrl = apiCoinGeckoUrl;
         this.cambioService = cambioService;
     }
 
@@ -56,88 +56,86 @@ public class CriptoService {
         Double cotacaoDolar = obterDolarAtual();
         if (cotacaoDolar == null) return obterFallbackEmergencia();
 
-        if (isBinanceBloqueada()) {
-            log.error("Binance em tempo de espera. Usando CoinCap (Fallback).");
-            return fallbackCoinCap(cotacaoDolar);
+        if (isPrincipalBloqueada()) {
+            log.warn("CoinMarketCap em tempo de espera. Usando CoinGecko (Fallback).");
+            return fallbackCoinGecko(cotacaoDolar);
         }
 
         try {
-            log.info("Tentando buscar via Binance...");
-            List<Map<String, Object>> resultado = tentarBinance(cotacaoDolar);
-
-            momentoUltimoErroBinance = null;
+            log.info("Tentando buscar via CoinMarketCap (Principal)...");
+            List<Map<String, Object>> resultado = tentarCoinMarketCap(cotacaoDolar);
+            momentoUltimoErroPrincipal = null;
             return resultado;
 
         } catch (Exception e) {
-            momentoUltimoErroBinance = Instant.now();
-            log.error("Falha na Binance: {}", e.getMessage());
-            return fallbackCoinCap(cotacaoDolar);
+            momentoUltimoErroPrincipal = Instant.now();
+            log.error("Falha na CoinMarketCap: {}", e.getMessage());
+            return fallbackCoinGecko(cotacaoDolar);
         }
     }
 
-    private boolean isBinanceBloqueada() {
-        if (momentoUltimoErroBinance == null) return false;
-        long minutosPassados = Duration.between(momentoUltimoErroBinance, Instant.now()).toMinutes();
+    private boolean isPrincipalBloqueada() {
+        if (momentoUltimoErroPrincipal == null) return false;
+        long minutosPassados = Duration.between(momentoUltimoErroPrincipal, Instant.now()).toMinutes();
         return minutosPassados < TEMPO_ESPERA_MINUTOS;
     }
 
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> tentarCoinMarketCap(Double cotacaoDolar) {
+        String urlCompleta = apiCmcUrl + "?symbol=" + MOEDAS_ALVO_CMC + "&convert=USD";
 
-    private List<Map<String, Object>> tentarBinance(Double cotacaoDolar) {
-        List<Map<String, Object>> todasCotacoes = restClient.get()
-                .uri(apiBinanceUrl)
+        Map<String, Object> response = restClient.get()
+                .uri(urlCompleta)
+                .header("X-CMC_PRO_API_KEY", apiCmcKey)
                 .retrieve()
-                .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
+        if (response == null || !response.containsKey("data")) {
+            throw new RuntimeException("Resposta inválida da CMC");
+        }
+
+        Map<String, Object> dataMap = (Map<String, Object>) response.get("data");
         List<Map<String, Object>> processada = new ArrayList<>();
 
-        processada.add(montarObjetoMoeda("USDT", "Tether", 1.0, cotacaoDolar));
-
-        if (todasCotacoes != null) {
-            for (Map<String, Object> item : todasCotacoes) {
-                String symbol = (String) item.get("symbol");
-
-                if (MOEDAS_ALVO_BINANCE.contains(symbol)) {
-                    String priceStr = (String) item.get("price");
-                    Double priceUsd = Double.parseDouble(priceStr);
-
-                    String symbolLimpo = symbol.replace("USDT", "");
-                    processada.add(montarObjetoMoeda(symbolLimpo, obterNomeBase(symbolLimpo), priceUsd, cotacaoDolar));
-                }
-            }
+        for (String key : dataMap.keySet()) {
+            Map<String, Object> coinData = (Map<String, Object>) dataMap.get(key);
+            String symbol = (String) coinData.get("symbol");
+            String name = (String) coinData.get("name");
+            Map<String, Object> quote = (Map<String, Object>) coinData.get("quote");
+            Map<String, Object> usdInfo = (Map<String, Object>) quote.get("USD");
+            Double priceUsd = ((Number) usdInfo.get("price")).doubleValue();
+            processada.add(montarObjetoMoeda(symbol, name, priceUsd, cotacaoDolar));
         }
+
         atualizarCache(processada);
         return processada;
     }
 
     @SuppressWarnings("unchecked")
-    private List<Map<String, Object>> fallbackCoinCap(Double cotacaoDolar) {
+    private List<Map<String, Object>> fallbackCoinGecko(Double cotacaoDolar) {
         try {
-            Map<String, Object> response = restClient.get()
-                    .uri(apiCoinCapUrl)
+            List<Map<String, Object>> listaBruta = restClient.get()
+                    .uri(apiCoinGeckoUrl)
                     .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+                    .body(new ParameterizedTypeReference<List<Map<String, Object>>>() {});
 
-            if (response == null || !response.containsKey("data")) {
-                throw new RuntimeException("Resposta vazia");
-            }
-
-            List<Map<String, Object>> listaBruta = (List<Map<String, Object>>) response.get("data");
             List<Map<String, Object>> processada = new ArrayList<>();
 
-            for (Map<String, Object> item : listaBruta) {
-                String symbol = (String) item.get("symbol");
-                String name = (String) item.get("name");
-                String priceStr = (String) item.get("priceUsd");
+            if (listaBruta != null) {
+                for (Map<String, Object> item : listaBruta) {
+                    String symbol = ((String) item.get("symbol")).toUpperCase();
+                    String name = (String) item.get("name");
+                    Double priceUsd = ((Number) item.get("current_price")).doubleValue();
 
-                Double priceUsd = Double.parseDouble(priceStr);
-                processada.add(montarObjetoMoeda(symbol, name, priceUsd, cotacaoDolar));
+                    processada.add(montarObjetoMoeda(symbol, name, priceUsd, cotacaoDolar));
+                }
             }
 
             atualizarCache(processada);
             return processada;
 
         } catch (Exception e) {
-            log.error("Erro Crítico: CoinCap também falhou: " + e.getMessage());
+            log.error("Erro Crítico: CoinGecko também falhou: {}", e.getMessage());
             return obterFallbackEmergencia();
         }
     }
@@ -166,7 +164,7 @@ public class CriptoService {
     }
 
     private void atualizarCache(List<Map<String, Object>> lista) {
-        Map<String, Object> novoCache = new HashMap<>();
+        Map<String, Object> novoCache = new ConcurrentHashMap<>();
         novoCache.put("lista_moedas", lista);
         novoCache.put("ultima_atualizacao", Instant.now().toString());
         this.cacheCripto = novoCache;
@@ -186,22 +184,6 @@ public class CriptoService {
             return (List<Map<String, Object>>) cacheCripto.get("lista_moedas");
         }
         return List.of(montarObjetoMoeda("BTC", "Bitcoin", 98000.0, 6.0));
-    }
-
-    private String obterNomeBase(String simbolo) {
-        return switch (simbolo) {
-            case "BTC" -> "Bitcoin";
-            case "ETH" -> "Ethereum";
-            case "USDT" -> "Tether";
-            case "XRP" -> "XRP";
-            case "BNB" -> "Binance Coin";
-            case "SOL" -> "Solana";
-            case "USDC" -> "USD Coin";
-            case "TRX" -> "TRON";
-            case "DOGE" -> "Dogecoin";
-            case "ADA" -> "Cardano";
-            default -> simbolo;
-        };
     }
 
     @Scheduled(fixedRate = 30 * 60 * 1000)
