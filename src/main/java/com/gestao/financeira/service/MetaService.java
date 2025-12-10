@@ -1,6 +1,6 @@
 package com.gestao.financeira.service;
 
-import com.gestao.financeira.model.Meta;
+import com.gestao.financeira.entity.Meta;
 import com.gestao.financeira.repository.MetaRepository;
 import org.springframework.stereotype.Service;
 

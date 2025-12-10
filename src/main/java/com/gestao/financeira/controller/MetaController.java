@@ -1,9 +1,7 @@
 package com.gestao.financeira.controller;
 
-import com.gestao.financeira.model.Meta;
+import com.gestao.financeira.entity.Meta;
 import com.gestao.financeira.service.MetaService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
