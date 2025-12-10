@@ -1,6 +1,6 @@
 package com.gestao.financeira.controller;
 
-import com.gestao.financeira.model.Saldo;
+import com.gestao.financeira.entity.Saldo;
 import com.gestao.financeira.service.SaldoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

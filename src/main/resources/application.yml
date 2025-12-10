@@ -2,6 +2,20 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
 
+
+  mail:
+    host: smtp-relay.brevo.com
+    port: 587
+    username: ${BREVO_SMTP_LOGIN}
+    password: ${BREVO_SMTP_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
 management:
   endpoints:
     web:
@@ -10,3 +24,15 @@ management:
   endpoint:
     health:
       show-details: never
+
+logging:
+  level:
+    root: WARN
+    com.gestao.financeira: WARN
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+  email:
+    from: ${MAIL_FROM:no-reply@seu-dominio.com}

@@ -1,6 +1,6 @@
 package com.gestao.financeira.service;
 
-import com.gestao.financeira.model.Saldo;
+import com.gestao.financeira.entity.Saldo;
 import com.gestao.financeira.repository.SaldoRepository;
 import org.springframework.stereotype.Service;
 

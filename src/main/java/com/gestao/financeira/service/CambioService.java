@@ -35,6 +35,23 @@ public class CambioService {
         return fetchNovaCotacao();
     }
 
+    private Map<String, Object> fetchNovaCotacao() {
+        try {
+            String url = montarUrlApi();
+            Map<String, Object> respostaApi = executarChamadaHttp(url);
+            Double valorCotacao = extrairValorCotacao(respostaApi);
+
+            if (valorCotacao != null) {
+                return atualizarCache(valorCotacao);
+            }
+
+        } catch (Exception e) {
+            System.err.println("Erro no fluxo de cotação: " + e.getMessage());
+        }
+
+        return obterFallback();
+    }
+
     private boolean isCacheValid() {
         long CACHE_DURATION_MINUTES = 35;
 
@@ -48,37 +65,39 @@ public class CambioService {
         return elapsedMinutes < CACHE_DURATION_MINUTES;
     }
 
-    private Map<String, Object> fetchNovaCotacao() {
-        try {
-            // CORREÇÃO AQUI: Montar a URL completa juntando a Base + "key=" + Chave
-            // Sua base termina com "&", então adicionamos "key=" e a chave
-            String urlCompleta = apiBaseUrl + "key=" + apiKey;
+    private String montarUrlApi() {
+        return apiBaseUrl + "key=" + apiKey;
+    }
 
-            Map<String, Object> apiResponse = restClient.get()
-                    .uri(urlCompleta) // Usa a URL montada
-                    .retrieve()
-                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+    private Map<String, Object> executarChamadaHttp(String url) {
+        return restClient.get()
+                .uri(url)
+                .retrieve()
+                .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+    }
 
-            if (apiResponse != null && apiResponse.containsKey("results")) {
-                Map<String, Object> results = (Map<String, Object>) apiResponse.get("results");
-                Map<String, Object> currencies = (Map<String, Object>) results.get("currencies");
-                Map<String, Object> usdData = (Map<String, Object>) currencies.get("USD");
+    private Double extrairValorCotacao(Map<String, Object> apiResponse) {
+        if (apiResponse != null && apiResponse.containsKey("results")) {
+            Map<String, Object> results = (Map<String, Object>) apiResponse.get("results");
+            Map<String, Object> currencies = (Map<String, Object>) results.get("currencies");
+            Map<String, Object> usdData = (Map<String, Object>) currencies.get("USD");
 
-                Double cotacaoBRL = (Double) usdData.get("buy");
-
-                Map<String, Object> resultado = new HashMap<>();
-                resultado.put("cotacao", cotacaoBRL);
-                resultado.put("ultima_atualizacao", Instant.now().toString());
-
-                cacheCotacao = resultado;
-                System.out.println("Cotação atualizada via HG Brasil: " + cotacaoBRL);
-                return resultado;
+            if (usdData != null && usdData.containsKey("buy")) {
+                return (Double) usdData.get("buy");
             }
-
-        } catch (Exception e) {
-            System.err.println("Erro ao chamar HG Brasil: " + e.getMessage());
         }
+        return null;
+    }
 
+    private Map<String, Object> atualizarCache (Double cotacaoValor) {
+        Map<String, Object> novoResultado = new HashMap<>();
+        novoResultado.put("cotacao", cotacaoValor);
+        novoResultado.put("ultima_atualizacao", Instant.now().toString());
+        this.cacheCotacao = novoResultado;
+        return novoResultado;
+    }
+
+    private Map<String, Object> obterFallback () {
         if (cacheCotacao.containsKey("cotacao")) {
             return cacheCotacao;
         }
@@ -86,8 +105,7 @@ public class CambioService {
     }
 
     @Scheduled(fixedRate = 35 * 60 * 1000)
-    public void atualizarCotacaoAutomatica() {
-        System.out.println("Executando atualização agendada (35 min)...");
+    public void updateQuoteAutomatically() {
         fetchNovaCotacao();
     }
 }
