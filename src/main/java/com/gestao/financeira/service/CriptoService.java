@@ -28,6 +28,8 @@ public class CriptoService {
     private Map<String, Object> cacheCripto = new ConcurrentHashMap<>();
 
     private Instant momentoUltimoErroPrincipal = null;
+    private int errosConsecutivos = 0;
+    private static final int LIMITE_ERROS_PARA_BLOQUEAR = 3;
     private static final long TEMPO_ESPERA_MINUTOS = 60;
 
     private static final String MOEDAS_ALVO_CMC = "BTC,ETH,XRP,BNB,SOL,USDC,TRX,DOGE,ADA,USDT";
@@ -64,12 +66,20 @@ public class CriptoService {
         try {
             log.info("Tentando buscar via CoinMarketCap (Principal)...");
             List<Map<String, Object>> resultado = tentarCoinMarketCap(cotacaoDolar);
+            errosConsecutivos = 0;
             momentoUltimoErroPrincipal = null;
             return resultado;
 
         } catch (Exception e) {
-            momentoUltimoErroPrincipal = Instant.now();
-            log.error("Falha na CoinMarketCap: {}", e.getMessage());
+            errosConsecutivos++;
+            log.warn("Falha ao consultar CoinMarketCap (Erro {}/{}): {}",
+                    errosConsecutivos, LIMITE_ERROS_PARA_BLOQUEAR, e.getMessage());
+
+            if (errosConsecutivos >= LIMITE_ERROS_PARA_BLOQUEAR) {
+                momentoUltimoErroPrincipal = Instant.now();
+                log.error("Limite de erros atingido. Bloqueando CoinMarketCap por {} minutos.", TEMPO_ESPERA_MINUTOS);
+            }
+
             return fallbackCoinGecko(cotacaoDolar);
         }
     }
