@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -16,8 +17,14 @@ public class Saldo {
     private Long id;
 
     private String nomeConta;
-    private Double valor;
+    @Column(precision = 20, scale = 10)
+    private BigDecimal valor;
     private String moeda;
+    // ===== CRIPTO =====
+    private String simbolo; // BTC, ETH, USDT...
+
+    @Column(precision = 20, scale = 10)
+    private BigDecimal quantidade;
     private LocalDate data;
 
     @Column(length = 500)

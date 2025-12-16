@@ -20,10 +20,25 @@ public class SaldoService {
     }
 
     public Saldo salvar(Saldo saldo) {
+        normalizarSaldo(saldo);
         return repository.save(saldo);
     }
 
     public void deletar(Long id) {
         repository.deleteById(id);
+    }
+
+    private void normalizarSaldo(Saldo saldo) {
+
+        boolean isCripto = saldo.getSimbolo() != null
+                && saldo.getQuantidade() != null;
+
+        if (isCripto) {
+            saldo.setValor(null);
+            saldo.setMoeda(null);
+        } else {
+            saldo.setSimbolo(null);
+            saldo.setQuantidade(null);
+        }
     }
 }
