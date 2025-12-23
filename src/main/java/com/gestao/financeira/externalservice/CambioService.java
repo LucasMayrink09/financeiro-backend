@@ -1,4 +1,4 @@
-package com.gestao.financeira.service;
+package com.gestao.financeira.externalservice;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;

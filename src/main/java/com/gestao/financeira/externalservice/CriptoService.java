@@ -1,4 +1,4 @@
-package com.gestao.financeira.service;
+package com.gestao.financeira.externalservice;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
