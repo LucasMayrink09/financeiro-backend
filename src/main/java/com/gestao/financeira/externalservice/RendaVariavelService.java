@@ -23,7 +23,7 @@ public class RendaVariavelService {
 
     private final String apiBrapiUrl;
     private final String apiToken;
-    private final RestClient restClient = RestClient.create();
+    private final RestClient restClient;
 
     private Map<String, Object> cacheAcoes = new ConcurrentHashMap<>();
     private Map<String, Object> cacheFiis = new ConcurrentHashMap<>();
@@ -31,14 +31,16 @@ public class RendaVariavelService {
 
     private static final String TICKERS_ACOES = "PETR4,VALE3,ITUB4,BBDC4,BBAS3,WEGE3,RENT3,BPAC11,SUZB3,PRIO3";
     private static final String TICKERS_FIIS = "MXRF11,HGLG11,KNRI11,XPLG11,VISC11,HCTR11,IRDM11,BTLG11,XPML11,VGHF11";
-    private static final String TICKERS_ETFS = "BOVA11,SMAL11,IVVB11,NASD11,HASH11,XINA11,GOLD11";
+    private static final String TICKERS_ETFS = "BOVA11,SMAL11,IVVB11,NASD11,HASH11,XINA11,EURP11,GOLD11";
 
     public RendaVariavelService(
             @Value("${api.brapi-url}") String apiBrapiUrl,
-            @Value("${api.brapi-token}") String apiToken
+            @Value("${api.brapi-token}") String apiToken,
+            RestClient restClient
     ) {
         this.apiBrapiUrl = apiBrapiUrl;
         this.apiToken = apiToken;
+        this.restClient = restClient;
     }
 
     public List<Map<String, Object>> getTopAcoes() {
@@ -83,7 +85,7 @@ public class RendaVariavelService {
                     }
                 }
                 // Pausa obrigatória para não ser bloqueado (Rate Limit)
-                Thread.sleep(300);
+                Thread.sleep(2000);
 
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
@@ -121,11 +123,23 @@ public class RendaVariavelService {
     }
 
     @EventListener(ApplicationReadyEvent.class)
-    @Scheduled(cron = "0 0/30 10-18 * * MON-FRI")
+    @Scheduled(cron = "0 0 10,12,14,16,18 * * MON-FRI")
     public void updateAllAutomatically() {
         // Executa sequencialmente para não sobrecarregar a rede de uma vez só
         fetchBrapiOneByOne(TICKERS_ACOES, cacheAcoes);
         fetchBrapiOneByOne(TICKERS_FIIS, cacheFiis);
         fetchBrapiOneByOne(TICKERS_ETFS, cacheEtfs);
+    }
+
+    public Map<String, Object> getCacheAcoesRaw() {
+        return this.cacheAcoes;
+    }
+
+    public Map<String, Object> getCacheEtfsRaw() {
+        return this.cacheEtfs;
+    }
+
+    public Map<String, Object> getCacheFiisRaw() {
+        return this.cacheFiis;
     }
 }

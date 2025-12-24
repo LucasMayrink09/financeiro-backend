@@ -1,4 +1,4 @@
-package com.gestao.financeira.security;
+package com.gestao.financeira.config;
 
 
 import com.gestao.financeira.exception.RegraDeNegocioException;

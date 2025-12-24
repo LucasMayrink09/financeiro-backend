@@ -23,8 +23,9 @@ public class CriptoService {
     private final String apiCmcKey;
     private final String apiCoinGeckoUrl;
     private final CambioService cambioService;
-    private final RestClient restClient = RestClient.create();
-
+    private final RestClient restClient = RestClient.builder()
+            .defaultHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
+            .build();
     private Map<String, Object> cacheCripto = new ConcurrentHashMap<>();
 
     private Instant momentoUltimoErroPrincipal = null;
@@ -204,5 +205,9 @@ public class CriptoService {
     @Scheduled(fixedRate = 30 * 60 * 1000)
     public void updateCriptosAutomatically() {
         orquestrarBuscaDeDados();
+    }
+
+    public Map<String, Object> getCacheRaw() {
+        return this.cacheCripto;
     }
 }

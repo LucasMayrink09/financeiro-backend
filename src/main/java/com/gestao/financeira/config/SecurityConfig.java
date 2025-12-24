@@ -1,5 +1,7 @@
-package com.gestao.financeira.security;
+package com.gestao.financeira.config;
 
+import com.gestao.financeira.security.IpRateLimitFilter;
+import com.gestao.financeira.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;

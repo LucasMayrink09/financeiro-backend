@@ -1,0 +1,14 @@
+package com.gestao.financeira.repository;
+
+import com.gestao.financeira.entity.Alerta;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.Optional;
+
+public interface AlertaRepository extends JpaRepository<Alerta, Long> {
+    List<Alerta> findByDisparadoFalse();
+    // Para listar pro usuário no front
+    List<Alerta> findByUserIdAndDisparadoFalse(Long userId);
+    Optional<Alerta> findTopByUserIdOrderByCreatedAtDesc(Long userId);
+    long countByUserIdAndDisparadoFalse(Long userId);
+}

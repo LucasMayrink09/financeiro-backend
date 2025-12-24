@@ -1,5 +1,6 @@
 package com.gestao.financeira.externalservice;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -11,22 +12,24 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class CambioService {
 
     private final String apiKey;
     private final String apiBaseUrl;
+    private final RestClient restClient;
 
     public CambioService(
             @Value("${api.key}") String apiKey,
-            @Value("${api.url}") String apiBaseUrl
+            @Value("${api.url}") String apiBaseUrl,
+            RestClient restClient
     ) {
         this.apiKey = apiKey;
         this.apiBaseUrl = apiBaseUrl;
+        this.restClient = restClient;
     }
 
     private Map<String, Object> cacheCotacao = new HashMap<>();
-
-    private final RestClient restClient = RestClient.create();
 
     public Map<String, Object> buscarCotacaoAtualizada() {
         if (cacheCotacao.containsKey("cotacao") && isCacheValid()) {
@@ -37,23 +40,26 @@ public class CambioService {
 
     private Map<String, Object> fetchNovaCotacao() {
         try {
-            String url = montarUrlApi();
-            Map<String, Object> respostaApi = executarChamadaHttp(url);
-            Double valorCotacao = extrairValorCotacao(respostaApi);
+            return RetryHelper.executeWithRetry(() -> {
+                String url = montarUrlApi();
+                Map<String, Object> respostaApi = executarChamadaHttp(url);
+                Double valorCotacao = extrairValorCotacao(respostaApi);
 
-            if (valorCotacao != null) {
+                if (valorCotacao == null) {
+                    throw new RuntimeException("Cotação nula na resposta da API");
+                }
+
                 return atualizarCache(valorCotacao);
-            }
+            }, 3, "HgBrasil-Cambio");
 
         } catch (Exception e) {
-            System.err.println("Erro no fluxo de cotação: " + e.getMessage());
+            log.error("Erro no fluxo de cotação após todas as tentativas: {}", e.getMessage());
+            return obterFallback();
         }
-
-        return obterFallback();
     }
 
     private boolean isCacheValid() {
-        long CACHE_DURATION_MINUTES = 35;
+        long CACHE_DURATION_MINUTES = 60;
 
         if (!cacheCotacao.containsKey("ultima_atualizacao")) {
             return false;
@@ -72,7 +78,6 @@ public class CambioService {
     private Map<String, Object> executarChamadaHttp(String url) {
         return restClient.get()
                 .uri(url)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
                 .retrieve()
                 .body(new ParameterizedTypeReference<Map<String, Object>>() {});
     }
@@ -105,7 +110,7 @@ public class CambioService {
         return Map.of("cotacao", 5.50, "ultima_atualizacao", Instant.now().toString());
     }
 
-    @Scheduled(fixedRate = 35 * 60 * 1000)
+    @Scheduled(fixedRate = 50 * 60 * 1000)
     public void updateQuoteAutomatically() {
         fetchNovaCotacao();
     }
