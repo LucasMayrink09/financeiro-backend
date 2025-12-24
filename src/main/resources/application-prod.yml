@@ -18,7 +18,7 @@ spring:
         format_sql: true
 
 api:
-  url: "https://api.hgbrasil.com/finance?format=json-cors&"
+  url: "https://api.hgbrasil.com/finance?format=json&"
   key: ${API_KEY}
   cmc-url: "https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest"
   cmc-key: ${API_CMC_KEY}

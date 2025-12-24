@@ -31,7 +31,7 @@ public class RendaVariavelService {
 
     private static final String TICKERS_ACOES = "PETR4,VALE3,ITUB4,BBDC4,BBAS3,WEGE3,RENT3,BPAC11,SUZB3,PRIO3";
     private static final String TICKERS_FIIS = "MXRF11,HGLG11,KNRI11,XPLG11,VISC11,HCTR11,IRDM11,BTLG11,XPML11,VGHF11";
-    private static final String TICKERS_ETFS = "BOVA11,SMAL11,IVVB11,NASD11,HASH11,XINA11,EURP11,GOLD11";
+    private static final String TICKERS_ETFS = "BOVA11,SMAL11,IVVB11,NASD11,HASH11,XINA11,GOLD11";
 
     public RendaVariavelService(
             @Value("${api.brapi-url}") String apiBrapiUrl,
