@@ -106,7 +106,7 @@ public class AlertaService {
 
     @Scheduled(fixedRate = 7200000)
     public void processarAlertas() {
-        List<Alerta> alertasAtivos = repository.findByDisparadoFalse();
+        List<Alerta> alertasAtivos = repository.findTop100ByDisparadoFalse();
         if (alertasAtivos.isEmpty()) return;
 
         log.info("Processando {} alertas ativos...", alertasAtivos.size());
