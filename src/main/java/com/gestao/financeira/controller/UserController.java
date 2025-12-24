@@ -3,6 +3,8 @@ package com.gestao.financeira.controller;
 import com.gestao.financeira.dto.ChangePasswordDTO;
 import com.gestao.financeira.dto.MessageDTO;
 import com.gestao.financeira.dto.UserResponseDTO;
+import com.gestao.financeira.dto.UserUpdateDTO;
+import com.gestao.financeira.entity.User;
 import com.gestao.financeira.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,14 @@ public class UserController {
             @AuthenticationPrincipal UserDetails userDetails) {
         var user = userService.getUserByEmail(userDetails.getUsername());
         return ResponseEntity.ok(UserResponseDTO.fromEntity(user));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserResponseDTO> updateProfile(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestBody @Valid UserUpdateDTO data) {
+        User userAtualizado = userService.updateProfile(userDetails.getUsername(), data);
+        return ResponseEntity.ok(UserResponseDTO.fromEntity(userAtualizado));
     }
 
     @PatchMapping("/change-password")

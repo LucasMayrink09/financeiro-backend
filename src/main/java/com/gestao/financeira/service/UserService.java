@@ -1,6 +1,7 @@
 package com.gestao.financeira.service;
 
 import com.gestao.financeira.dto.ChangePasswordDTO;
+import com.gestao.financeira.dto.UserUpdateDTO;
 import com.gestao.financeira.entity.User;
 import com.gestao.financeira.exception.RegraDeNegocioException;
 import com.gestao.financeira.repository.SaldoRepository;
@@ -52,6 +53,26 @@ public class UserService {
         applyNewPassword(user, data.newPassword());
 
         userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateProfile(String currentEmail, UserUpdateDTO data) {
+        User user = findUserByEmailOrThrow(currentEmail);
+        if (data.name() != null && !data.name().isBlank()) {
+            user.setName(data.name().trim());
+        }
+        if (data.email() != null && !data.email().isBlank()) {
+            String newEmail = data.email().toLowerCase().trim();
+
+            if (!newEmail.equals(user.getEmail())) {
+                if (userRepository.existsByEmail(newEmail)) {
+                    throw new RegraDeNegocioException("Este email já está em uso.");
+                }
+                user.setEmail(newEmail);
+            }
+        }
+
+        return userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
