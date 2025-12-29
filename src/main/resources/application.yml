@@ -4,10 +4,10 @@ spring:
 
 
   mail:
-    host: smtp-relay.brevo.com
+    host: smtp.gmail.com
     port: 587
-    username: ${BREVO_SMTP_LOGIN}
-    password: ${BREVO_SMTP_PASSWORD}
+    username: ${GMAIL_USER}
+    password: ${GMAIL_APP_PASS}
     properties:
       mail:
         smtp:
@@ -36,7 +36,7 @@ app:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
   email:
-    from: ${MAIL_FROM:no-reply@seu-dominio.com}
+    from: "FinanceX <${GMAIL_USER}>"
 
 jwt:
   secret: ${JWT_SECRET}

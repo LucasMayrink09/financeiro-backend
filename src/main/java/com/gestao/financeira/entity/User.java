@@ -93,8 +93,6 @@ public class User {
         this.passwordResetTokenHash = hash;
     }
 
-    // ===== MÉTODOS DE NEGÓCIO =====
-
     public boolean isAccountLocked() {
         return lockedUntil != null && lockedUntil.isAfter(Instant.now());
     }
