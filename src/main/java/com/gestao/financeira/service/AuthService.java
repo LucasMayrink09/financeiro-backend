@@ -258,16 +258,28 @@ public class AuthService {
     }
 
     private void sendPasswordResetEmail(String email, String code) {
+        String link = frontendUrl + "/reset-password?token=" + code;
+
         emailService.sendHtmlEmail(
                 email,
                 "Redefinição de senha",
                 """
-                <h2>Redefinir senha</h2>
-                <p>Use o código de segurança abaixo para redefinir sua senha:</p>
-                <h1 style="background-color: #f0f0f0; padding: 10px; display: inline-block; letter-spacing: 5px;">%s</h1>
-                <p>Este código é válido por 1 hora.</p>
-                <p>Se você não solicitou isso, ignore este e-mail.</p>
-                """.formatted(code)
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                    <h2>Redefinir senha</h2>
+                    <p>Recebemos uma solicitação para trocar sua senha.</p>
+                    
+                    <p>Seu código de segurança é:</p>
+                    <h1 style="background-color: #f0f0f0; padding: 10px; display: inline-block; letter-spacing: 5px; border-radius: 5px;">%s</h1>
+                    
+                    <p>Você pode copiar o código acima ou clicar diretamente no botão abaixo:</p>
+                    
+                    <a href="%s" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                        Redefinir Minha Senha
+                    </a>
+                    
+                    <p style="margin-top: 20px; font-size: 12px; color: #666;">Este código é válido por 1 hora.</p>
+                </div>
+                """.formatted(code, link)
         );
     }
 }
