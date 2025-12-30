@@ -7,6 +7,9 @@ resend:
   api:
     key: ${RESEND_API_KEY}
 
+server:
+  forward-headers-strategy: native
+
 management:
   endpoints:
     web:
