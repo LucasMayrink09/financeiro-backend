@@ -62,10 +62,11 @@ public class ExternalController {
     @GetMapping("/simular-cdi")
     public ResponseEntity<BigDecimal> getSimulacaoRendaFixa(
             @RequestParam BigDecimal saldo,
-            @RequestParam BigDecimal percentual) {
+            @RequestParam BigDecimal percentual,
+            @RequestParam String indexador) {
         //  O service faz a conta e retorna o valor (ex: 0.45)
         // O Frontend pega esse valor e soma ao saldo visualmente
-        return ResponseEntity.ok(rendaFixaService.calcularRendimentoDiario(saldo, percentual));
+        return ResponseEntity.ok(rendaFixaService.calcularRendimentoDiario(saldo, percentual, indexador));
     }
 
     // --- Renda Variável

@@ -46,16 +46,35 @@ public class RendaFixaService {
      * Calcula quanto o saldo rendeu hoje baseado na taxa atual.
      * Fórmula: Saldo * (TaxaCDI / 100) * (PercentualInvestido / 100)
      */
-    public BigDecimal calcularRendimentoDiario(BigDecimal saldoAtual, BigDecimal percentualDoCdi) {
-        Double taxaCdiDiaria = obterTaxaDoCache("CDI"); // Ex: 0.05 (significa 0.05% ao dia)
+    public BigDecimal calcularRendimentoDiario(BigDecimal saldoAtual, BigDecimal percentualOuTaxa, String nomeIndice) {
+        if (saldoAtual == null || percentualOuTaxa == null) return BigDecimal.ZERO;
 
-        if (taxaCdiDiaria == null || saldoAtual == null) return BigDecimal.ZERO;
+        String indiceAlvo = (nomeIndice == null || nomeIndice.isBlank()) ? "CDI" : nomeIndice.toUpperCase();
 
-        BigDecimal taxaDecimal = BigDecimal.valueOf(taxaCdiDiaria).divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
-        BigDecimal fatorCdiUsuario = percentualDoCdi.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+        if ("PRE".equals(indiceAlvo)) {
+            BigDecimal taxaDiariaPre = percentualOuTaxa
+                    .divide(BigDecimal.valueOf(252), 10, RoundingMode.HALF_UP)
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
 
-        // Rendimento = Saldo * (TaxaDiaria * %Contratada)
-        return saldoAtual.multiply(taxaDecimal).multiply(fatorCdiUsuario).setScale(2, RoundingMode.HALF_UP);
+            return saldoAtual.multiply(taxaDiariaPre).setScale(2, RoundingMode.HALF_UP);
+        }
+
+        Double taxaIndice = obterTaxaDoCache(indiceAlvo);
+        if (taxaIndice == null) return BigDecimal.ZERO;
+
+        BigDecimal taxaDecimal;
+
+        if ("IPCA".equals(indiceAlvo)) {
+            taxaDecimal = BigDecimal.valueOf(taxaIndice)
+                    .divide(BigDecimal.valueOf(22), 10, RoundingMode.HALF_UP)
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+        } else {
+            taxaDecimal = BigDecimal.valueOf(taxaIndice)
+                    .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+        }
+        BigDecimal fatorContratado = percentualOuTaxa.divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP);
+
+        return saldoAtual.multiply(taxaDecimal).multiply(fatorContratado).setScale(2, RoundingMode.HALF_UP);
     }
 
     private Map<String, Object> orquestrarBuscaIndices() {
