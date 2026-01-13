@@ -1,7 +1,9 @@
 package com.gestao.financeira.controller;
 
 import com.gestao.financeira.dto.*;
+import com.gestao.financeira.entity.User;
 import com.gestao.financeira.service.AuthService;
+import com.gestao.financeira.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,9 +15,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtService jwtService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtService jwtService) {
         this.authService = authService;
+        this.jwtService = jwtService;
     }
 
     @PostMapping("/login")
@@ -68,8 +72,9 @@ public class AuthController {
     }
 
     @GetMapping("/confirm-email")
-    public ResponseEntity<MessageDTO> confirmEmail(@RequestParam String token) {
-        authService.confirmEmail(token);
-        return ResponseEntity.ok(new MessageDTO("Email confirmado!"));
+    public ResponseEntity<LoginResponseDTO> confirmEmail(@RequestParam String token) {
+        User user = authService.confirmEmail(token);
+        String jwtToken = jwtService.generateToken(user);
+        return ResponseEntity.ok(new LoginResponseDTO(jwtToken, 3600L));
     }
 }

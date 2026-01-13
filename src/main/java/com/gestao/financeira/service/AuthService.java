@@ -64,10 +64,11 @@ public class AuthService {
     }
 
     @Transactional
-    public void confirmEmail(String token) {
+    public User confirmEmail(String token) {
         User user = loadUserByEmailVerificationToken(token);
         validateEmailVerificationToken(token, user);
         confirmUserEmail(user);
+        return user;
     }
 
     @Transactional
