@@ -29,7 +29,8 @@ public class IpRateLimitFilter extends OncePerRequestFilter {
 
         if (path.equals("/api/auth/register") ||
                 path.equals("/api/auth/forgot-password") ||
-                path.equals("/api/auth/login")) {
+                path.equals("/api/auth/login") ||
+                path.equals("/public/health")) {
 
             String ip = getClientIp(request);
             rateLimitService.consume("ip:" + ip, 10, 60);
