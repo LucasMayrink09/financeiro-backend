@@ -1,6 +1,5 @@
 package com.gestao.financeira.repository;
 
-import com.gestao.financeira.entity.Alerta;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;

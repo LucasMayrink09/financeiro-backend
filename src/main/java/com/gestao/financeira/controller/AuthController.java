@@ -3,6 +3,7 @@ package com.gestao.financeira.controller;
 import com.gestao.financeira.dto.*;
 import com.gestao.financeira.service.AuthService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,21 +25,33 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<MessageDTO> register(@RequestBody @Valid UserRegistrationDTO data) {
-        authService.register(data);
+    public ResponseEntity<RegisterResponseDTO> register(@RequestBody @Valid UserRegistrationDTO data) {
+        String token = authService.register(data);
+        RegisterResponseDTO response = new RegisterResponseDTO(
+                "Usuário registrado! Verifique seu email.",
+                token
+        );
+
         return ResponseEntity
-                .status(201)
-                .body(new MessageDTO("Usuário registrado! Verifique seu email."));
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<MessageDTO> forgotPassword(@RequestBody @Valid ForgotPasswordDTO data) {
-        authService.forgotPassword(data.email());
-        return ResponseEntity.ok(
-                new MessageDTO("Se o email existir, você receberá instruções.")
-        );
-    }
+    public ResponseEntity<ForgotPasswordResponseDTO> forgotPassword(@RequestBody @Valid ForgotPasswordDTO data) {
+        String code = authService.forgotPassword(data.email());
 
+        if (code == null) {
+            return ResponseEntity.ok(new ForgotPasswordResponseDTO(
+                    "Se o email existir, você receberá instruções.",
+                    null
+            ));
+        }
+        return ResponseEntity.ok(new ForgotPasswordResponseDTO(
+                "Código gerado com sucesso.",
+                code
+        ));
+    }
     @PostMapping("/reset-password")
     public ResponseEntity<MessageDTO> resetPassword(@RequestBody @Valid ResetPasswordDTO data) {
         authService.resetPassword(data);

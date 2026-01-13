@@ -54,13 +54,13 @@ public class AuthService {
         return generateLoginResponse(user);
     }
 
-    public void register(UserRegistrationDTO dto) {
+    public String register(UserRegistrationDTO dto) {
         rateLimitService.consume("register:" + dto.email(), 3, 3600);
         validateEmailAvailability(dto.email());
         User user = createUser(dto);
         String token = generateEmailVerification(user);
         userRepository.save(user);
-        sendVerificationEmail(user.getEmail(), token);
+        return token;
     }
 
     @Transactional
@@ -78,15 +78,15 @@ public class AuthService {
         applyNewPassword(dto.newPassword(), user);
     }
 
-    public void forgotPassword(String email) {
+    public String forgotPassword(String email) {
         applyForgotPasswordRateLimit(email);
         User user = findUserByEmailSilently(email);
 
         if (user == null) {
-            return;
+            return null;
         }
-        String token = generatePasswordResetToken(user);
-        sendPasswordResetEmail(user.getEmail(), token);
+        String code = generatePasswordResetToken(user);
+        return code;
     }
 
     public void resendVerificationToken(String email) {
