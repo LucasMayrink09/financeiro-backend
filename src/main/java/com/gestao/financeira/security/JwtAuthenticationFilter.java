@@ -40,27 +40,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String token = authHeader.substring(7);
+
+            if (token.isEmpty() || "null".equals(token) || "undefined".equals(token)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             Long userId = jwtService.extractUserId(token);
 
-            User user = userRepository.findById(userId).orElse(null);
+            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                User user = userRepository.findById(userId).orElse(null);
 
-            if (user != null) {
-                if (!user.isEnabled()) {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Conta desativada ou banida.");
-                    return;
-                }
+                if (user != null) {
+                    if (!user.isEnabled()) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Conta desativada ou banida.");
+                        return;
+                    }
 
-                long tokenPwdChange = jwtService.extractPwdChange(token);
-                long userPwdChange = user.getLastPasswordChange() != null
-                        ? user.getLastPasswordChange().toEpochMilli()
-                        : 0L;
+                    long tokenPwdChange = jwtService.extractPwdChange(token);
+                    long userPwdChange = user.getLastPasswordChange() != null
+                            ? user.getLastPasswordChange().toEpochMilli()
+                            : 0L;
 
-                if (tokenPwdChange != userPwdChange) {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token expirado por alteração de credenciais");
-                    return;
-                }
-
-                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    if (tokenPwdChange != userPwdChange) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Sessão expirada. Faça login novamente.");
+                        return;
+                    }
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                             user, null,
                             user.getRoles().stream().map(SimpleGrantedAuthority::new).toList()
@@ -70,13 +75,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception e) {
-            logger.error("Erro ao processar autenticação JWT", e);
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json");
-            response.getWriter().write("{\"error\": \"Token inválido ou expirado\"}");
-            return;
+            logger.warn("Token ignorado (inválido ou expirado): " + e.getMessage());
+            SecurityContextHolder.clearContext();
         }
-
         filterChain.doFilter(request, response);
     }
 }
