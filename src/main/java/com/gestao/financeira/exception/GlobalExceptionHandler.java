@@ -60,4 +60,11 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.UNAUTHORIZED)
                 .body(Map.of("error", ex.getMessage()));
     }
+
+    @ExceptionHandler(AiServiceException.class)
+    public ResponseEntity<Map<String, String>> handleAiException(AiServiceException ex) {
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", ex.getMessage()));
+    }
 }
