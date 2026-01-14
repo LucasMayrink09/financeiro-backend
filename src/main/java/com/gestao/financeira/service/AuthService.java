@@ -108,7 +108,7 @@ public class AuthService {
 
     private User loadUserByEmail(String email) {
         return userRepository.findByEmail(email.toLowerCase().trim())
-                .orElseThrow(() -> new BadCredentialsException("Credenciais inválidas"));
+                .orElseThrow(() -> new BadCredentialsException("Email não cadastrado."));
     }
 
     private void validateLoginPreConditions(User user) {
@@ -129,7 +129,7 @@ public class AuthService {
         if (!passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
             user.incrementFailedAttempts();
             userRepository.save(user);
-            throw new BadCredentialsException("Credenciais inválidas");
+            throw new BadCredentialsException("Senha incorreta.");
         }
     }
 
