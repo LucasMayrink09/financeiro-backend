@@ -2,7 +2,6 @@ package com.gestao.financeira.controller;
 
 import com.gestao.financeira.entity.User;
 import com.gestao.financeira.service.AiService;
-import com.gestao.financeira.service.SaldoService;
 import com.gestao.financeira.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

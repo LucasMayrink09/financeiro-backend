@@ -31,10 +31,12 @@ public class AiService {
     @Value("${ai.gemini.key}")
     private String geminiKey;
 
-    public AiService(RateLimitService rateLimitService, SaldoService saldoService) {
+    public AiService(RateLimitService rateLimitService,
+                     SaldoService saldoService,
+                     RestClient restClient) {
         this.rateLimitService = rateLimitService;
         this.saldoService = saldoService;
-        this.restClient = RestClient.create();
+        this.restClient = restClient;
     }
 
     @Cacheable(value = "ai-analise", key = "#user.email", unless = "#result == null")
