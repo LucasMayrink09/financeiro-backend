@@ -63,14 +63,6 @@ public class AuthController {
         return ResponseEntity.ok(new MessageDTO("Senha redefinida com sucesso!"));
     }
 
-    @PostMapping("/resend-verification")
-    public ResponseEntity<MessageDTO> resendVerification(@RequestBody @Valid ForgotPasswordDTO data) {
-        authService.resendVerificationToken(data.email());
-        return ResponseEntity.ok(
-                new MessageDTO("Se a conta existir e não estiver verificada, um novo email foi enviado.")
-        );
-    }
-
     @GetMapping("/confirm-email")
     public ResponseEntity<LoginResponseDTO> confirmEmail(@RequestParam String token) {
         User user = authService.confirmEmail(token);

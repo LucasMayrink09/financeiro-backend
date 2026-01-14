@@ -26,20 +26,17 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
-    private final EmailService emailService;
     private final RateLimitService rateLimitService;
     private final UserService userService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       EmailService emailService,
                        RateLimitService rateLimitService,
                        UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-        this.emailService = emailService;
         this.rateLimitService = rateLimitService;
         this.userService = userService;
     }
@@ -88,18 +85,6 @@ public class AuthService {
         }
         String code = generatePasswordResetToken(user);
         return code;
-    }
-
-    public void resendVerificationToken(String email) {
-        rateLimitService.consume("resend-email:" + email, 3, 3600);
-        User user = findUserByEmailSilently(email);
-        if (user == null || user.isEmailVerified()) {
-            return;
-        }
-        String token = generateEmailVerification(user);
-        userRepository.save(user);
-
-        sendVerificationEmail(user.getEmail(), token);
     }
 
     private void applyLoginRateLimit(String email) {
@@ -169,21 +154,6 @@ public class AuthService {
         user.setEmailVerificationExpiry(Instant.now().plusSeconds(3600));
 
         return token;
-    }
-
-    private void sendVerificationEmail(String email, String token) {
-        String link = frontendUrl + "/confirm-email?token=" + token;
-
-        emailService.sendHtmlEmail(
-                email,
-                "Confirme seu email",
-                """
-                <h2>Confirmação de Email</h2>
-                <p>Clique no link abaixo para ativar sua conta:</p>
-                <a href="%s">Confirmar Email</a>
-                <p>Link válido por 1 hora.</p>
-                """.formatted(link)
-        );
     }
 
     private User loadUserByEmailVerificationToken(String token) {
@@ -256,31 +226,5 @@ public class AuthService {
 
         userRepository.save(user);
         return code;
-    }
-
-    private void sendPasswordResetEmail(String email, String code) {
-        String link = frontendUrl + "/reset-password?token=" + code;
-
-        emailService.sendHtmlEmail(
-                email,
-                "Redefinição de senha",
-                """
-                <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                    <h2>Redefinir senha</h2>
-                    <p>Recebemos uma solicitação para trocar sua senha.</p>
-                    
-                    <p>Seu código de segurança é:</p>
-                    <h1 style="background-color: #f0f0f0; padding: 10px; display: inline-block; letter-spacing: 5px; border-radius: 5px;">%s</h1>
-                    
-                    <p>Você pode copiar o código acima ou clicar diretamente no botão abaixo:</p>
-                    
-                    <a href="%s" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                        Redefinir Minha Senha
-                    </a>
-                    
-                    <p style="margin-top: 20px; font-size: 12px; color: #666;">Este código é válido por 1 hora.</p>
-                </div>
-                """.formatted(code, link)
-        );
     }
 }
