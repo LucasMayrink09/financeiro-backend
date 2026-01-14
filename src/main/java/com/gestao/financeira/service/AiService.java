@@ -84,22 +84,26 @@ public class AiService {
                 .collect(Collectors.joining("\n"));
 
         return """
-                Você é um consultor financeiro sênior.
-                
-                Analise a carteira abaixo (os 30 maiores ativos) e gere exatamente 3 recomendações objetivas.
-                Cada recomendação deve:
-                - Ter no máximo 2 linhas
-                - Ser prática e direta
-                - Não usar introduções genéricas ("Olá", "Com base...")
-                - Não repetir apenas o que já está na lista
-                
-                Formato da resposta:
-                **1. Título da Dica 1:** Texto da dica.
-                **2. Título da Dica 2:** Texto da dica.
-                **3. Título da Dica 3:** Texto da dica.
-                
-                Carteira:
-                %s
-                """.formatted(resumoSaldos);
+            Você é um assistente financeiro para usuários leigos.
+            Fale de forma simples, clara e direta.
+            Evite palavras difíceis, termos técnicos e linguagem formal.
+
+            Gere exatamente 3 dicas financeiras com base na carteira abaixo.
+
+            Regras obrigatórias:
+            - Use frases curtas
+            - Linguagem simples (como explicar para alguém sem conhecimento financeiro)
+            - Não use palavras técnicas como: rebalanceamento, exposição, realocação, volatilidade, diluição
+            - Não use introduções
+            - Cada dica deve ter no máximo 2 linhas
+
+            Formato da resposta:
+            **1. Título curto:** explicação simples.
+            **2. Título curto:** explicação simples.
+            **3. Título curto:** explicação simples.
+
+            Carteira:
+            %s
+            """.formatted(resumoSaldos);
     }
 }
