@@ -1,6 +1,5 @@
 package com.gestao.financeira.dto;
 
-import com.gestao.financeira.security.StrongPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -13,6 +12,5 @@ public record LoginDTO(
 
         @NotBlank(message = "Senha é obrigatória")
         @Size(max = 128)
-        @StrongPassword
         String password
 ) {}
