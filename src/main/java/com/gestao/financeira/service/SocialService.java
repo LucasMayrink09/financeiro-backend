@@ -31,76 +31,48 @@ public class SocialService {
     }
 
     /**
-     * Valida ID Token do Google via tokeninfo endpoint
-     * ✅ CORRETO: Usa id_token para autenticação (OpenID Connect)
+     * Valida ACCESS TOKEN do Google (necessário para botão customizado)
      */
-    private SocialUserInfo validateGoogle(String idToken) {
+    private SocialUserInfo validateGoogle(String token) {
         try {
-            // ✅ IMPORTANTE: Usar id_token, NÃO access_token
             var response = restClient.get()
-                    .uri("https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken)
+                    .uri("https://oauth2.googleapis.com/tokeninfo?access_token=" + token)
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null) {
-                throw new RegraDeNegocioException("Resposta vazia do Google");
+            if (response == null || response.get("email") == null) {
+                throw new RegraDeNegocioException("Token do Google inválido ou expirado.");
             }
 
-            // ✅ Validar Audience (aud) - CRÍTICO para segurança
+            // 🔐 Segurança: garantir que o token pertence ao seu app
             String aud = (String) response.get("aud");
-            if (!googleClientId.equals(aud)) {
-                throw new RegraDeNegocioException("Token não pertence a esta aplicação (audience inválido)");
+            String azp = (String) response.get("azp");
+
+            if (!googleClientId.equals(aud) && !googleClientId.equals(azp)) {
+                throw new RegraDeNegocioException(
+                        "Token não pertence a esta aplicação (client_id inválido)."
+                );
             }
 
-            // ✅ Validar Issuer (iss) - CRÍTICO para segurança
-            String iss = (String) response.get("iss");
-            if (!"accounts.google.com".equals(iss) &&
-                    !"https://accounts.google.com".equals(iss)) {
-                throw new RegraDeNegocioException("Issuer inválido do Google");
+            Object verified = response.get("email_verified");
+            if (verified != null && "false".equals(verified.toString())) {
+                throw new RegraDeNegocioException("Email do Google não verificado.");
             }
 
-            // ✅ Validar expiração (exp)
-            Object expObj = response.get("exp");
-            if (expObj != null) {
-                long exp = expObj instanceof String
-                        ? Long.parseLong((String) expObj)
-                        : ((Number) expObj).longValue();
+            long exp = Long.parseLong((String) response.get("exp"));
+            long now = Instant.now().getEpochSecond();
 
-                long now = Instant.now().getEpochSecond();
-                if (now > exp) {
-                    throw new RegraDeNegocioException("Token expirado");
-                }
+            if (now > exp) {
+                throw new RegraDeNegocioException("Token expirado.");
             }
 
-            // ✅ Validar email verificado
-            Object emailVerified = response.get("email_verified");
-            if (emailVerified != null) {
-                boolean isVerified = emailVerified instanceof Boolean
-                        ? (Boolean) emailVerified
-                        : "true".equalsIgnoreCase(emailVerified.toString());
-
-                if (!isVerified) {
-                    throw new RegraDeNegocioException("Email do Google não verificado");
-                }
-            }
-
-            // ✅ Extrair dados do usuário
-            String email = (String) response.get("email");
-            if (email == null || email.isBlank()) {
-                throw new RegraDeNegocioException("Email não encontrado no token");
-            }
-
-            String name = (String) response.get("name");
-            if (name == null || name.isBlank()) {
-                name = email.split("@")[0]; // Fallback
-            }
-
-            return new SocialUserInfo(email, name, SocialProvider.GOOGLE);
-
-        } catch (RestClientException e) {
-            throw new RegraDeNegocioException("Erro ao validar token do Google: " + e.getMessage());
-        } catch (NumberFormatException e) {
-            throw new RegraDeNegocioException("Token com formato inválido");
+            return new SocialUserInfo(
+                    (String) response.get("email"),
+                    (String) response.get("name"),
+                    SocialProvider.GOOGLE
+            );
+        } catch (Exception e) {
+            throw new RegraDeNegocioException("Erro na validação Google: " + e.getMessage());
         }
     }
 
