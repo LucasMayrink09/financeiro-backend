@@ -28,17 +28,20 @@ public class AuthService {
     private final JwtService jwtService;
     private final RateLimitService rateLimitService;
     private final UserService userService;
+    private final SocialService socialService;
 
     public AuthService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        RateLimitService rateLimitService,
-                       UserService userService) {
+                       UserService userService,
+                       SocialService socialService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.rateLimitService = rateLimitService;
         this.userService = userService;
+        this.socialService = socialService;
     }
 
     @Transactional
@@ -49,6 +52,37 @@ public class AuthService {
         validatePassword(dto.password(), user);
         onSuccessfulLogin(user);
         return generateLoginResponse(user);
+    }
+
+    @Transactional
+    public LoginResponseDTO socialLogin(SocialLoginDTO dto) {
+        rateLimitService.consume("social-login-attempt", 10, 60);
+
+        SocialUserInfo info = socialService.validateToken(dto);
+        User user = userRepository.findByEmail(info.email().toLowerCase().trim())
+                .orElseGet(() -> createSocialUser(info));
+
+        if (!user.isEnabled()) {
+            throw new DisabledException("Conta desativada.");
+        }
+
+        if (!user.isEmailVerified()) {
+            user.setEmailVerified(true);
+            userRepository.save(user);
+        }
+        return generateLoginResponse(user);
+    }
+
+    private User createSocialUser(SocialUserInfo info) {
+        User user = new User();
+        user.setName(info.name() != null ? info.name() : "Usuário " + info.provider());
+        user.setEmail(info.email().toLowerCase().trim());
+        String dummyPassword = UUID.randomUUID().toString() + UUID.randomUUID().toString();
+        user.setPasswordHash(passwordEncoder.encode(dummyPassword));
+        user.setEmailVerified(true);
+        user.setLastPasswordChange(Instant.now());
+        user.addToPasswordHistory(user.getPasswordHash());
+        return userRepository.save(user);
     }
 
     public String register(UserRegistrationDTO dto) {

@@ -57,6 +57,12 @@ public class AuthController {
         ));
     }
 
+    @PostMapping("/social-login")
+    public ResponseEntity<LoginResponseDTO> socialLogin(@RequestBody @Valid SocialLoginDTO data) {
+        LoginResponseDTO response = authService.socialLogin(data);
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/reset-password")
     public ResponseEntity<MessageDTO> resetPassword(@RequestBody @Valid ResetPasswordDTO data) {
         authService.resetPassword(data);
