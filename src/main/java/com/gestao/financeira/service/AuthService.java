@@ -22,6 +22,8 @@ public class AuthService {
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
+    @Value("${jwt.expiration:604800000}")
+    private Long jwtExpiration;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -184,7 +186,7 @@ public class AuthService {
 
     private LoginResponseDTO generateLoginResponse(User user) {
         String token = jwtService.generateToken(user);
-        return new LoginResponseDTO(token, 3600L);
+        return new LoginResponseDTO(token, jwtExpiration);
     }
 
     private User createUser(UserRegistrationDTO dto) {
