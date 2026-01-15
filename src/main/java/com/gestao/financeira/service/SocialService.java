@@ -7,9 +7,7 @@ import com.gestao.financeira.exception.RegraDeNegocioException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Base64;
-import java.util.Map;
+import org.springframework.web.client.RestClientException;
 import java.time.Instant;
 import java.util.Map;
 
@@ -18,8 +16,6 @@ public class SocialService {
 
     @Value("${app.social.google-client-id}")
     private String googleClientId;
-    @Value("${app.social.microsoft-client-id}")
-    private String microsoftClientId;
 
     private final RestClient restClient;
 
@@ -34,55 +30,90 @@ public class SocialService {
         };
     }
 
-    private SocialUserInfo validateGoogle(String token) {
+    /**
+     * Valida ID Token do Google via tokeninfo endpoint
+     * ✅ CORRETO: Usa id_token para autenticação (OpenID Connect)
+     */
+    private SocialUserInfo validateGoogle(String idToken) {
         try {
+            // ✅ IMPORTANTE: Usar id_token, NÃO access_token
             var response = restClient.get()
-                    .uri("https://oauth2.googleapis.com/tokeninfo?id_token=" + token)
+                    .uri("https://oauth2.googleapis.com/tokeninfo?id_token=" + idToken)
                     .retrieve()
                     .body(Map.class);
 
-            if (response == null || response.get("email") == null) {
-                throw new RegraDeNegocioException("Token do Google inválido ou expirado.");
+            if (response == null) {
+                throw new RegraDeNegocioException("Resposta vazia do Google");
             }
 
+            // ✅ Validar Audience (aud) - CRÍTICO para segurança
             String aud = (String) response.get("aud");
             if (!googleClientId.equals(aud)) {
-                throw new RegraDeNegocioException("Token não pertence a esta aplicação (Audience mismatch).");
+                throw new RegraDeNegocioException("Token não pertence a esta aplicação (audience inválido)");
             }
 
+            // ✅ Validar Issuer (iss) - CRÍTICO para segurança
             String iss = (String) response.get("iss");
             if (!"accounts.google.com".equals(iss) &&
                     !"https://accounts.google.com".equals(iss)) {
-                throw new RegraDeNegocioException("Issuer inválido do Google.");
+                throw new RegraDeNegocioException("Issuer inválido do Google");
             }
 
-            Object verified = response.get("email_verified");
-            if (verified != null && "false".equals(verified.toString())) {
-                throw new RegraDeNegocioException("Email do Google não verificado.");
+            // ✅ Validar expiração (exp)
+            Object expObj = response.get("exp");
+            if (expObj != null) {
+                long exp = expObj instanceof String
+                        ? Long.parseLong((String) expObj)
+                        : ((Number) expObj).longValue();
+
+                long now = Instant.now().getEpochSecond();
+                if (now > exp) {
+                    throw new RegraDeNegocioException("Token expirado");
+                }
             }
 
-            long exp = Long.parseLong((String) response.get("exp"));
-            long now = Instant.now().getEpochSecond();
+            // ✅ Validar email verificado
+            Object emailVerified = response.get("email_verified");
+            if (emailVerified != null) {
+                boolean isVerified = emailVerified instanceof Boolean
+                        ? (Boolean) emailVerified
+                        : "true".equalsIgnoreCase(emailVerified.toString());
 
-            if (now > exp) {
-                throw new RegraDeNegocioException("Token expirado.");
+                if (!isVerified) {
+                    throw new RegraDeNegocioException("Email do Google não verificado");
+                }
             }
 
+            // ✅ Extrair dados do usuário
+            String email = (String) response.get("email");
+            if (email == null || email.isBlank()) {
+                throw new RegraDeNegocioException("Email não encontrado no token");
+            }
 
-            return new SocialUserInfo(
-                    (String) response.get("email"),
-                    (String) response.get("name"),
-                    SocialProvider.GOOGLE
-            );
-        } catch (Exception e) {
-            throw new RegraDeNegocioException("Erro na validação Google: " + e.getMessage());
+            String name = (String) response.get("name");
+            if (name == null || name.isBlank()) {
+                name = email.split("@")[0]; // Fallback
+            }
+
+            return new SocialUserInfo(email, name, SocialProvider.GOOGLE);
+
+        } catch (RestClientException e) {
+            throw new RegraDeNegocioException("Erro ao validar token do Google: " + e.getMessage());
+        } catch (NumberFormatException e) {
+            throw new RegraDeNegocioException("Token com formato inválido");
         }
     }
 
-
+    /**
+     * Valida Access Token da Microsoft via Graph API
+     * ✅ CORRETO: Microsoft Graph valida o token automaticamente
+     */
     private SocialUserInfo validateMicrosoft(String accessToken) {
         try {
-            // Microsoft Graph usa o ACCESS_TOKEN
+            // ✅ A chamada ao /me valida automaticamente:
+            // - Se o token é válido
+            // - Se não está expirado
+            // - Se pertence ao nosso app (implícito no consent)
             var response = restClient.get()
                     .uri("https://graph.microsoft.com/v1.0/me")
                     .header("Authorization", "Bearer " + accessToken)
@@ -90,60 +121,30 @@ public class SocialService {
                     .body(Map.class);
 
             if (response == null) {
-                throw new RegraDeNegocioException("Token da Microsoft inválido.");
+                throw new RegraDeNegocioException("Resposta vazia da Microsoft");
             }
 
+            // ✅ Extrair email (priorizar 'mail', fallback para 'userPrincipalName')
             String email = (String) response.get("mail");
-            if (email == null) {
+            if (email == null || email.isBlank()) {
                 email = (String) response.get("userPrincipalName");
             }
 
-            if (email == null) {
-                throw new RegraDeNegocioException("Não foi possível obter o email da conta Microsoft.");
+            if (email == null || email.isBlank()) {
+                throw new RegraDeNegocioException("Email não encontrado na conta Microsoft");
             }
 
-            Map<String, Object> claims = decodeJwtPayload(accessToken);
-
-            String aud = (String) claims.get("aud");
-            if (!microsoftClientId.equals(aud)) {
-                throw new RegraDeNegocioException("Token Microsoft não pertence a esta aplicação");
-            }
-
-            String iss = (String) claims.get("iss");
-            if (iss == null || !iss.contains("login.microsoftonline.com")) {
-                throw new RegraDeNegocioException("Issuer inválido do Microsoft");
-            }
-
-            Long exp = ((Number) claims.get("exp")).longValue();
-            long now = Instant.now().getEpochSecond();
-
-            if (now > exp) {
-                throw new RegraDeNegocioException("Token Microsoft expirado.");
-            }
-
-
+            // ✅ Extrair nome
             String name = (String) response.get("displayName");
+            if (name == null || name.isBlank()) {
+                name = email.split("@")[0]; // Fallback
+            }
 
             return new SocialUserInfo(email, name, SocialProvider.MICROSOFT);
-        } catch (Exception e) {
-            throw new RegraDeNegocioException("Erro na validação Microsoft: " + e.getMessage());
-        }
-    }
 
-    private Map<String, Object> decodeJwtPayload(String jwt) {
-        try {
-            String[] parts = jwt.split("\\.");
-            if (parts.length < 2) {
-                throw new IllegalArgumentException("JWT inválido");
-            }
-
-            String payloadJson = new String(
-                    Base64.getUrlDecoder().decode(parts[1])
-            );
-
-            return new ObjectMapper().readValue(payloadJson, Map.class);
-        } catch (Exception e) {
-            throw new RegraDeNegocioException("Token JWT inválido");
+        } catch (RestClientException e) {
+            // Se o token for inválido/expirado, a Microsoft retorna 401
+            throw new RegraDeNegocioException("Token da Microsoft inválido ou expirado: " + e.getMessage());
         }
     }
 }

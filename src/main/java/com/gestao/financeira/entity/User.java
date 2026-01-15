@@ -69,6 +69,10 @@ public class User implements UserDetails {
     @Column
     private Instant lockedUntil;
 
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AuthProvider authProvider = AuthProvider.LOCAL;
+
     @ElementCollection
     @CollectionTable(name = "user_password_history", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "password_hash", length = 60)
@@ -181,4 +185,11 @@ public class User implements UserDetails {
             passwordHistory.remove(passwordHistory.size() - 1);
         }
     }
+
+    public enum AuthProvider {
+        LOCAL,
+        GOOGLE,
+        MICROSOFT
+    }
+
 }

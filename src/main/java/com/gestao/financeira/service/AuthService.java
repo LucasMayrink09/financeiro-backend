@@ -77,10 +77,16 @@ public class AuthService {
         User user = new User();
         user.setName(info.name() != null ? info.name() : "Usuário " + info.provider());
         user.setEmail(info.email().toLowerCase().trim());
-        String dummyPassword = UUID.randomUUID().toString() + UUID.randomUUID().toString();
+        String dummyPassword = UUID.randomUUID() + UUID.randomUUID().toString();
         user.setPasswordHash(passwordEncoder.encode(dummyPassword));
         user.setEmailVerified(true);
         user.setLastPasswordChange(Instant.now());
+        user.setAuthProvider(
+                info.provider() == SocialProvider.GOOGLE
+                        ? User.AuthProvider.GOOGLE
+                        : User.AuthProvider.MICROSOFT
+        );
+
         user.addToPasswordHistory(user.getPasswordHash());
         return userRepository.save(user);
     }
@@ -105,6 +111,11 @@ public class AuthService {
     @Transactional
     public void resetPassword(ResetPasswordDTO dto) {
         User user = loadUserByPasswordResetToken(dto.token());
+        if (user.getAuthProvider() != User.AuthProvider.LOCAL) {
+            throw new RegraDeNegocioException(
+                    "Conta criada via login social."
+            );
+        }
         validatePasswordResetToken(dto.token(), user);
         userService.validatePasswordReuse(user, dto.newPassword());
         applyNewPassword(dto.newPassword(), user);
@@ -117,6 +128,13 @@ public class AuthService {
         if (user == null) {
             return null;
         }
+
+        if (user.getAuthProvider() != User.AuthProvider.LOCAL) {
+            throw new RegraDeNegocioException(
+                    "Conta criada via login social. Use Google ou Microsoft."
+            );
+        }
+
         String code = generatePasswordResetToken(user);
         return code;
     }
@@ -131,6 +149,13 @@ public class AuthService {
     }
 
     private void validateLoginPreConditions(User user) {
+
+        if (user.getAuthProvider() != User.AuthProvider.LOCAL) {
+            throw new RegraDeNegocioException(
+                    "Esta conta utiliza login social. Use Google ou Microsoft."
+            );
+        }
+
         if (!user.isEnabled()) {
             throw new DisabledException("Sua conta foi desativada. Entre em contato com o suporte.");
         }
